@@ -295,7 +295,7 @@ function DataTable<T extends Record<string, any>>({
   );
 }
 
-function Column<T>(props: IColumnProps<T>) {
+function Column<T>(_: IColumnProps<T>) {
   return null;
 }
 
