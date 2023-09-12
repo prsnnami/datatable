@@ -209,10 +209,23 @@ const columns = [
 ];
 
 function App() {
+  function toggleDarkMode() {
+    const html = document.querySelector("html")!;
+    html.classList.toggle("dark");
+  }
+
   return (
-    <main className="flex dark:bg-black">
-      <div className="container mx-auto mt-8 h-full min-h-screen">
-        <h1 className="text-5xl font-thin dark:text-white">DataTable</h1>
+    <main className="flex min-h-screen dark:bg-black">
+      <div className="container mx-auto mt-8 h-full">
+        <div className="flex justify-between">
+          <h1 className="text-5xl font-thin dark:text-white">DataTable</h1>
+          <button
+            className="my-2 rounded-xl border border-gray-700 px-2 dark:border-white dark:text-white"
+            onClick={toggleDarkMode}
+          >
+            Toggle Dark Mode
+          </button>
+        </div>
         <DataTable data={dataTableData} columns={columns} pagination={true} />
       </div>
     </main>
