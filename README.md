@@ -2,6 +2,8 @@
 
 Coding exercise for Edgecom Senior Front End Developer Application
 
+### [Demo Link](https://fastidious-profiterole-20d9bb.netlify.app/)
+
 ## To run the project
 
 ```
