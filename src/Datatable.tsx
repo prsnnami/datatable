@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import ChevronDoubleLeft from "./icons/chevron-double-left.svg";
 import ChevronLeft from "./icons/chevron-left.svg";
 import ChevronDoubleRight from "./icons/chevron-double-right.svg";
@@ -7,10 +7,14 @@ import ChevronUpDown from "./icons/chevron-up-down.svg";
 import ChevronUp from "./icons/chevron-up.svg";
 import ChevronDown from "./icons/chevron-down.svg";
 
+type ColumnType<T> = React.ReactElement<IColumnProps<T>>;
+
 export interface IDataTableProps<T extends Record<string, any>> {
   data: T[];
-  columns: IColumnProps<T>[];
+  columns?: IColumnProps<T>[];
   pagination?: boolean;
+  search?: boolean;
+  children?: ColumnType<T>[] | ColumnType<T>;
 }
 
 export interface IColumnProps<T> {
@@ -25,6 +29,8 @@ function DataTable<T extends Record<string, any>>({
   data,
   columns,
   pagination = false,
+  search = false,
+  children,
 }: IDataTableProps<T>) {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(1);
@@ -35,8 +41,13 @@ function DataTable<T extends Record<string, any>>({
   const [searchTerm, setSearchTerm] = useState("");
 
   // const simpleColumns = data[0] ? Object.keys(data[0]) : [];
+  if (children) {
+    columns = React.Children.map(children, (child) => child.props);
+  }
 
   const numPages = Math.ceil(data.length / pageSize);
+  const simpleTable = !columns;
+  const simpleColumns = simpleTable && data[0] ? Object.keys(data[0]) : [];
 
   const handlePageSizeChange = (
     event: React.ChangeEvent<HTMLSelectElement>,
@@ -72,12 +83,105 @@ function DataTable<T extends Record<string, any>>({
     setSearchTerm(event.target.value);
   }
 
+  function renderTableHeaderCells() {
+    if (columns) {
+      return columns.map((column, index) => {
+        return column.sortable ? (
+          <th
+            key={index}
+            className="flex cursor-pointer items-center p-2 text-left capitalize text-gray-600 dark:text-gray-200"
+            onClick={() => handleSort(column.accessor)}
+          >
+            {column.name}
+            {!sort ? (
+              <ChevronUpDown />
+            ) : sort.direction === "asc" ? (
+              <ChevronUp />
+            ) : (
+              <ChevronDown />
+            )}
+          </th>
+        ) : (
+          <th
+            key={index}
+            className="p-2 text-left capitalize text-gray-600 dark:text-gray-200"
+          >
+            {column.name}
+          </th>
+        );
+      });
+    }
+    return simpleColumns.map((name, index) => (
+      <th
+        key={index}
+        className="p-2 text-left capitalize text-gray-600 dark:text-gray-200"
+      >
+        {name}
+      </th>
+    ));
+  }
+
+  function renderTableBodyCells() {
+    if (columns) {
+      return itemsToDisplay.length ? (
+        itemsToDisplay.map((row, rowIndex) => (
+          <tr
+            key={rowIndex}
+            className="min-h-[48px] border-b border-solid border-gray-200 dark:border-gray-400"
+          >
+            {columns!.map((column, columnIndex) => (
+              <td className="p-2" key={columnIndex}>
+                {column.render
+                  ? column.render(row, columnIndex)
+                  : row[column.accessor]}
+              </td>
+            ))}
+          </tr>
+        ))
+      ) : (
+        <tr>
+          <td className="p-2 text-center" colSpan={columns.length}>
+            No Items To display...
+          </td>
+        </tr>
+      );
+    }
+
+    return itemsToDisplay.length ? (
+      itemsToDisplay.map((row, rowIndex) => (
+        <tr
+          key={rowIndex}
+          className="min-h-[48px] border-b border-solid border-gray-200 dark:border-gray-400"
+        >
+          {simpleColumns.map((name, columnIndex) => (
+            <td className="p-2" key={columnIndex}>
+              {row[name]}
+            </td>
+          ))}
+        </tr>
+      ))
+    ) : (
+      <tr>
+        <td className="p-2 text-center" colSpan={data.length}>
+          No Items To display...
+        </td>
+      </tr>
+    );
+  }
+
   const filteredData = searchTerm
     ? data.filter((item) => {
-        return columns.some((column) => {
-          return String(item[column.accessor])
-            .toLowerCase()
-            .includes(searchTerm.toLowerCase());
+        if (columns) {
+          return columns.some((column) => {
+            return String(item[column.accessor])
+              .toLowerCase()
+              .includes(searchTerm.toLowerCase());
+          });
+        }
+        return Object.entries(item).some((cellValue) => {
+          return String(cellValue)
+            .toLocaleLowerCase()
+            .includes(searchTerm.toLocaleLowerCase());
         });
       })
     : data;
@@ -97,72 +201,29 @@ function DataTable<T extends Record<string, any>>({
 
   return (
     <div className="w-full overflow-x-auto border border-gray-200 p-4">
-      <div className="flex flex-row-reverse">
-        <input
-          type="search"
-          placeholder="Search.."
-          className=" border-b border-gray-800 outline-none dark:border-white dark:bg-black"
-          onChange={handleSearch}
-        />
-      </div>
+      {search && (
+        <div className="flex flex-row-reverse">
+          <input
+            type="search"
+            placeholder="Search.."
+            className=" border-b border-gray-800 outline-none dark:border-white dark:bg-black dark:text-white"
+            onChange={handleSearch}
+          />
+        </div>
+      )}
       <table className=" w-full flex-col overflow-x-scroll whitespace-nowrap  bg-white text-black dark:bg-black dark:text-white">
         <thead className="">
           <tr className="min-h-[52px] w-full border-b border-solid border-gray-800  text-lg dark:border-gray-400">
-            {columns.map((column, index) =>
-              column.sortable ? (
-                <th
-                  key={index}
-                  className="flex cursor-pointer items-center p-2 text-left capitalize text-gray-600 dark:text-gray-200"
-                  onClick={() => handleSort(column.accessor)}
-                >
-                  {column.name}
-                  {!sort ? (
-                    <ChevronUpDown />
-                  ) : sort.direction === "asc" ? (
-                    <ChevronUp />
-                  ) : (
-                    <ChevronDown />
-                  )}
-                </th>
-              ) : (
-                <th
-                  key={index}
-                  className="p-2 text-left capitalize text-gray-600 dark:text-gray-200"
-                >
-                  {column.name}
-                </th>
-              ),
-            )}
+            {renderTableHeaderCells()}
           </tr>
         </thead>
-        <tbody>
-          {itemsToDisplay.length ? (
-            itemsToDisplay.map((row, rowIndex) => (
-              <tr
-                key={rowIndex}
-                className="min-h-[48px] border-b border-solid border-gray-200 dark:border-gray-400"
-              >
-                {columns.map((column, columnIndex) => (
-                  <td className="p-2" key={columnIndex}>
-                    {column.render
-                      ? column.render(row, columnIndex)
-                      : row[column.accessor]}
-                  </td>
-                ))}
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td className="p-2 text-center" colSpan={columns.length}>
-                No Items To display...
-              </td>
-            </tr>
-          )}
-        </tbody>
+        <tbody>{renderTableBodyCells()}</tbody>
         <tfoot>
           {pagination && (
             <tr>
-              <td colSpan={itemsToDisplay.length}>
+              <td
+                colSpan={simpleTable ? simpleColumns.length : columns?.length}
+              >
                 <div className="mt-2 flex w-full flex-row-reverse p-2">
                   <span className="ml-4">
                     Rows per page:
@@ -233,5 +294,11 @@ function DataTable<T extends Record<string, any>>({
     </div>
   );
 }
+
+function Column<T>(props: IColumnProps<T>) {
+  return null;
+}
+
+DataTable.Column = Column;
 
 export default DataTable;
